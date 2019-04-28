@@ -176,7 +176,5 @@ class container(object):
 
 
 # currently the same as a container
-
-
 class challenge(container):
     pass

@@ -6,6 +6,9 @@ from .endpoints import *
 from .objects import *
 
 
+from .exceptions import (Timedout, InvalidResponse, ServerError, NotFound, NoLabs)
+
+
 class Octp(object):
     def __init__(self, base_url=None):
         if base_url == None:
@@ -37,11 +40,18 @@ class Octp(object):
             req = requests.Request(method, url, headers=headers)
 
         prep = self.s.prepare_request(req)
-        r = self.s.send(prep, timeout=5)
-        rjson = r.json()
+        try:
+            r = self.s.send(prep, timeout=5)
+        except requests.ConnectionError as e:
+            raise Timedout(str(e))
+
+        try:
+            rjson = r.json()
+        except json.JSONDecodeError:
+            raise InvalidResponse
 
         if self.__keyExists(rjson, "error") and not rjson["error"] == "":
-            raise Exception(rjson["error"])
+            raise ServerError(rjson["error"])
 
         return apiResponse(r.status_code, r.text, rjson)
 
@@ -57,9 +67,7 @@ class Octp(object):
     def ping(self):
         try:
             res = self.__makeGet(API_GET_PING)
-        except requests.exceptions.ConnectionError:
-            return False
-        except requests.exceptions.Timeout:
+        except InternalServerError:
             return False
 
         if not res.json["ok"]:
@@ -80,13 +88,11 @@ class Octp(object):
 
     def get_registry_cert(self):
         res = self.__makeGet(API_GET_REGISTRYCERT)
-
         return registrycert().fromJson(req.json)
 
     def heartbeat(self, hb):
         assert isinstance(hb, heartbeat_req),"The specifed heartbeat is not of object octp.object.heartbeat_req"
         res = self.__makePost(API_POST_HEARTBEAT, data=hb.toJson())
-
         return heartbeat_res().fromJson(res.json)
 
     def agents(self):
@@ -106,16 +112,33 @@ class Octp(object):
 
     def claim_agent(self, name, email):
         data = {"name": name, "email": email}
-        res = self.__makePost(API_POST_AGENTS, data=data)
+
+        try:
+            res = self.__makePost(API_POST_AGENTS, data=data)
+        except ServerError as e:
+            if "No labs available" in str(e):
+                raise NoLabs
+            raise
 
         return agent().fromJson(res.json["agent"])
 
     def agent(self, agentid):
-        res = self.__makeGet(API_GET_AGENT.format(agentid=agentid))
+        try:
+            res = self.__makeGet(API_GET_AGENT.format(agentid=agentid))
+        except ServerError as e:
+            if "Failed to find" in str(e):
+                raise NotFound
+            raise
+
         return agent().fromJson(res.json["agent"])
 
     def delete_agent(self, agentid):
-        res = self.__makeDelete(API_DELETE_AGENT.format(agentid=agentid))
+        try:
+            res = self.__makeDelete(API_DELETE_AGENT.format(agentid=agentid))
+        except ServerError as e:
+            if "Failed to find" in str(e):
+                raise NotFound
+            raise
 
         if not res.json["ok"]:
             return False
@@ -138,17 +161,33 @@ class Octp(object):
 
     def claim_frontend(self, name, email):
         data = {"name": name, "email": email}
-        res = self.__makePost(API_POST_FRONTENDS, data=data)
+
+        try:
+            res = self.__makePost(API_POST_FRONTENDS, data=data)
+        except ServerError as e:
+            if "No frontends available" in str(e):
+                raise NoLabs
+            raise
 
         return frontend().fromJson(res.json["frontend"])
 
     def frontend(self, frontendid):
-        res = self.__makeGet(API_GET_FRONTEND.format(frontendid=frontendid))
+        try:
+            res = self.__makeGet(API_GET_FRONTEND.format(frontendid=frontendid))
+        except ServerError as e:
+            if "Failed to find" in str(e):
+                raise NotFound
+            raise
         return frontend().fromJson(res.json["frontend"])
 
     def delete_frontend(self, frontendid):
-        res = self.__makeDelete(
-            API_DELETE_FRONTEND.FOrmat(frontendid=frontendid))
+        try:
+            res = self.__makeDelete(
+                API_DELETE_FRONTEND.FOrmat(frontendid=frontendid))
+        except ServerError as e:
+            if "Failed to find" in str(e):
+                raise NotFound
+            raise
 
         if not res.json["ok"]:
             return False
