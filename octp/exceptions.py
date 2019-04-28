@@ -13,9 +13,9 @@ class Timedout(InternalServerError):
 class ServerError(Error):
     """Whenever the server will throw a error in {"error": "some error"}, we will throw this"""
 
-class NotFound(Error):
+class NotFound(ServerError):
     """The specific item that we tried to find, could not be located"""
 
-class NoLabs(Error):
+class NoLabs(ServerError):
     """There is currently no labs available"""
 

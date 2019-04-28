@@ -4,10 +4,7 @@ import json
 
 from .endpoints import *
 from .objects import *
-
-
-from .exceptions import (Timedout, InvalidResponse, ServerError, NotFound, NoLabs)
-
+from . import exceptions
 
 class Octp(object):
     def __init__(self, base_url=None):
@@ -27,6 +24,8 @@ class Octp(object):
 
     def __makeRequest(self, method, endpoint, data=None):
         url = "{0}/{1}".format(self.base_url, endpoint)
+        print(url)
+        print(data)
 
         headers = {
             "content-type": "application/json",
@@ -42,16 +41,16 @@ class Octp(object):
         prep = self.s.prepare_request(req)
         try:
             r = self.s.send(prep, timeout=5)
-        except requests.ConnectionError as e:
-            raise Timedout(str(e))
+        except ConnectionError:
+            raise exceptions.Timedout
 
         try:
             rjson = r.json()
         except json.JSONDecodeError:
-            raise InvalidResponse
+            raise exceptions.InvalidResponse
 
         if self.__keyExists(rjson, "error") and not rjson["error"] == "":
-            raise ServerError(rjson["error"])
+            raise exceptions.ServerError(rjson["error"])
 
         return apiResponse(r.status_code, r.text, rjson)
 
@@ -59,7 +58,7 @@ class Octp(object):
         return self.__makeRequest("GET", endpoint)
 
     def __makePost(self, endpoint, data=None):
-        return self.__makeRequest("GET", endpoint, data=data)
+        return self.__makeRequest("POST", endpoint, data=data)
 
     def __makeDelete(self, endpoint):
         return self.__makeRequest("DELETE", endpoint)
@@ -67,7 +66,7 @@ class Octp(object):
     def ping(self):
         try:
             res = self.__makeGet(API_GET_PING)
-        except InternalServerError:
+        except exceptions.InternalServerError:
             return False
 
         if not res.json["ok"]:
@@ -114,20 +113,21 @@ class Octp(object):
         data = {"name": name, "email": email}
 
         try:
-            res = self.__makePost(API_POST_AGENTS, data=data)
-        except ServerError as e:
-            if "No labs available" in str(e):
-                raise NoLabs
+            res = self.__makePost(API_POST_CLAIMAGENT, data=data)
+        except exceptions.ServerError as e:
+            if "No labs avail" in str(e):
+                raise exceptions.NoLabs(str(e))
             raise
 
+        print(res.json)
         return agent().fromJson(res.json["agent"])
 
     def agent(self, agentid):
         try:
             res = self.__makeGet(API_GET_AGENT.format(agentid=agentid))
-        except ServerError as e:
+        except exceptions.ServerError as e:
             if "Failed to find" in str(e):
-                raise NotFound
+                raise exceptions.NotFound
             raise
 
         return agent().fromJson(res.json["agent"])
@@ -135,9 +135,9 @@ class Octp(object):
     def delete_agent(self, agentid):
         try:
             res = self.__makeDelete(API_DELETE_AGENT.format(agentid=agentid))
-        except ServerError as e:
+        except exceptions.ServerError as e:
             if "Failed to find" in str(e):
-                raise NotFound
+                raise exceptions.NotFound
             raise
 
         if not res.json["ok"]:
@@ -163,10 +163,10 @@ class Octp(object):
         data = {"name": name, "email": email}
 
         try:
-            res = self.__makePost(API_POST_FRONTENDS, data=data)
-        except ServerError as e:
+            res = self.__makePost(API_POST_CLAIMFRONTEND, data=data)
+        except exceptions.ServerError as e:
             if "No frontends available" in str(e):
-                raise NoLabs
+                raise exceptions.NoLabs(str(e))
             raise
 
         return frontend().fromJson(res.json["frontend"])
@@ -174,9 +174,9 @@ class Octp(object):
     def frontend(self, frontendid):
         try:
             res = self.__makeGet(API_GET_FRONTEND.format(frontendid=frontendid))
-        except ServerError as e:
+        except exceptions.ServerError as e:
             if "Failed to find" in str(e):
-                raise NotFound
+                raise exceptions.NotFound
             raise
         return frontend().fromJson(res.json["frontend"])
 
@@ -184,9 +184,9 @@ class Octp(object):
         try:
             res = self.__makeDelete(
                 API_DELETE_FRONTEND.FOrmat(frontendid=frontendid))
-        except ServerError as e:
+        except exceptions.ServerError as e:
             if "Failed to find" in str(e):
-                raise NotFound
+                raise exceptions.NotFound
             raise
 
         if not res.json["ok"]:
