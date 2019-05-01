@@ -35,6 +35,9 @@ class Octp(object):
         elif method == "POST":
             req = requests.Request(
                 method, url, data=json.dumps(data), headers=headers)
+        elif method == "PUT":
+            req = requests.Request(
+                method, url, data=json.dumps(data), headers=headers)
         else:
             req = requests.Request(method, url, headers=headers)
 
@@ -59,6 +62,9 @@ class Octp(object):
 
     def __makePost(self, endpoint, data=None):
         return self.__makeRequest("POST", endpoint, data=data)
+
+    def __makePut(self, endpoint, data=None):
+        return self.__makeRequest("PUT", endpoint, data=data)
 
     def __makeDelete(self, endpoint):
         return self.__makeRequest("DELETE", endpoint)
@@ -132,6 +138,18 @@ class Octp(object):
 
         return agent().fromJson(res.json["agent"])
 
+    def put_agent(self, agentid, agent_data):
+        try:
+            res = self.__makePut(API_PUT_AGENT.format(agentid=agentid))
+        except exceptions.ServerError as e:
+            if "Failed to find" in str(e):
+                raise exceptions.NotFound
+            raise
+
+        if not res.json["ok"]:
+            return False
+        return True
+
     def delete_agent(self, agentid):
         try:
             res = self.__makeDelete(API_DELETE_AGENT.format(agentid=agentid))
@@ -179,6 +197,18 @@ class Octp(object):
                 raise exceptions.NotFound
             raise
         return frontend().fromJson(res.json["frontend"])
+
+    def put_frontend(self, frontendid, frontend_data):
+        try:
+            res = self.__makePut(API_PUT_FRONTEND.format(frontendid=frontendid))
+        except exceptions.ServerError as e:
+            if "Failed to find" in str(e):
+                raise exceptions.NotFound
+            raise
+
+        if not res.json["ok"]:
+            return False
+        return True
 
     def delete_frontend(self, frontendid):
         try:
