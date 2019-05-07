@@ -81,15 +81,17 @@ class frontend(object):
     def __init__(self):
         self.id = ""
         self.claim = ""
+        self.password = ""
         self.ip = ""
 
     def toJson(self):
-        data = {"id": self.id, "claim": self.claim, "ip": self.ip}
+        data = {"id": self.id, "claim": self.claim, "password": self.password, "ip": self.ip}
         return data
 
     def fromJson(self, jsonObj):
         self.id = jsonObj["id"]
         self.claim = jsonObj["claim"]
+        self.password = jsonObj["password"]
         self.ip = jsonObj["ip"]
         return self
 
