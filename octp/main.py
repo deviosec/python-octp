@@ -12,6 +12,10 @@ class Octp(object):
             logging.error("No valid base_url set, exiting")
             exit()
 
+        # remove any / at the end of the URL
+        if base_url[-1:] == '/':
+            base_url = base_url[:-1]
+
         self.base_url = base_url
         self.s = requests.session()
 
@@ -125,7 +129,6 @@ class Octp(object):
                 raise exceptions.NoLabs(str(e))
             raise
 
-        print(res.json)
         return agent().fromJson(res.json["agent"])
 
     def agent(self, agentid):
