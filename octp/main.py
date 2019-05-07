@@ -47,8 +47,8 @@ class Octp(object):
 
         prep = self.s.prepare_request(req)
         try:
-            r = self.s.send(prep, timeout=5)
-        except ConnectionError:
+            r = self.s.send(prep, timeout=10)
+        except requests.ConnectionError:
             raise exceptions.Timedout
 
         try:
